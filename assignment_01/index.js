@@ -7,6 +7,8 @@ const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const path = parsedUrl.pathname;
   const trimmedPath = path.replace(/^\/+|\/+$/g, '');
+  const method = req.method.toLowerCase();
+  const headers = req.headers
 
   const decoder = new StringDecoder('utf-8');
   let buffer = '';
@@ -21,7 +23,14 @@ const server = http.createServer((req, res) => {
     const requestedRouteHandler = typeof (routes[trimmedPath]) !== 'undefined' ?
       routes[trimmedPath] : routes.fourOhFour
 
-    requestedRouteHandler({}, (statusCode, payload) => {
+    const data = {
+      trimmedPath,
+      method,
+      headers,
+      payload: buffer,
+    }
+
+    requestedRouteHandler(data, (statusCode, payload) => {
       const code = typeof(statusCode) === 'number' ? statusCode : 200;
       const resPayload = typeof(payload) === 'object' ? payload : {};
       const payloadString = JSON.stringify(resPayload);
@@ -33,9 +42,21 @@ const server = http.createServer((req, res) => {
   });
 });
 
+const handlers = {};
+
+handlers.hello = (data, callback) => {
+  if (data.method === 'post') {
+    callback(200, { message: 'Hello Friend' });
+  } else {
+    callback(405);
+  };
+};
+
+handlers.fourOhFour = (data, callback) => callback(404);
+
 const routes = {
-  hello: (data, callback) => callback(200, { message: 'Hello Friend' }),
-  fourOhFour: (data, callback) => callback(404),
+  hello: handlers.hello,
+  fourOhFour: handlers.fourOhFour,
 };
 
 const port = process.env.port || 8080
