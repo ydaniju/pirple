@@ -147,15 +147,33 @@ handlers._users.put = (data, callback) => {
       })
     } else {
       callback(400, { 'Error': 'Missing fields to update' });
-    }
+    };
   } else {
     callback(400, { 'Error': 'Missing required field' });
   }
-
 };
 
 // Users - delete
-handlers._users.delete = (data, callback) => {};
+// Required data: phone
+// Optional data: none
+// @TODO let authenticated user delete their data and no one else
+// @TODO delete any other data related to user
+handlers._users.delete = (data, callback) => {
+  // Check if phone number passed is valid
+  const phone = typeof (data.queryStringObject.phone) === 'string' ?
+    data.queryStringObject.phone.trim() : false;
+  if(phone) {
+    _data.delete('users', phone, (err) => {
+      if(!err) {
+        callback(200);
+      } else {
+        callback(500, { 'Error': 'Could not delete the specified user' });
+      };
+    });
+  } else {
+    callback(400, { 'Error': 'Missing required field' });
+  };
+};
 
 // ping handler
 handlers.ping = (data, callback) => {
