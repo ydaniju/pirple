@@ -17,8 +17,8 @@ handlers.users = (data, callback) => {
     handlers._users[data.method](data, callback);
   } else {
     callback(405);
-  }
-}
+  };
+};
 
 // Container for users submethods
 handlers._users = {};
@@ -174,6 +174,65 @@ handlers._users.delete = (data, callback) => {
     callback(400, { 'Error': 'Missing required field' });
   };
 };
+
+// Tokens
+handlers.tokens = (data, callback) => {
+  const acceptableMethods = ['post', 'get', 'put', 'delete'];
+  if (acceptableMethods.indexOf(data.method) > -1) {
+    handlers._tokens[data.method](data, callback);
+  } else {
+    callback(405);
+  };
+}
+
+// Container for all the token methods
+handlers._tokens = {};
+
+// Tokens - post
+// Required data: phone and password
+handlers._tokens.post = (data, callback) => {
+  const phone = typeof (data.payload.phone) === 'string' &&
+    data.payload.phone.trim().length == 10 ? data.payload.phone.trim() : false;
+  const password = typeof (data.payload.password) === 'string' &&
+    data.payload.password.trim().length > 0 ? data.payload.password.trim() : false;
+
+  if (phone && password) {
+    // lookup the user who matches the phone
+    _data.read('users', phone, (err, userData) => {
+      if (!err && userData) {
+        // Hash the sent password and compare to the stored user password
+        const hashedPassword = helpers.hash(password);
+        if (hashedPassword === userData.hashedPassword) {
+          // If valid create a new token with a randome name and set validity 
+          // for one hour from now
+          const tokenId = helpers.createRandomString(20);
+          const expires = Date.now() + 1000 * 60 * 60
+          const tokenObject = {
+            phone,
+            id: tokenId,
+            expires,
+          };
+          // Store the token
+          _data.create('tokens', tokenId, tokenObject, (err) => {
+            if (!err) {
+              callback(200, tokenObject);
+            } else {
+              callback(500, { 'Error': 'Could not create the random string '});
+            }
+          })
+        } else {
+          callback(400, { 'Error': 'Password did not match the specified user stored password' });
+        }
+
+      } else {
+        callback(400, { 'Error': 'Could not find user specified' });
+      }
+    })
+  } else {
+    callback(400, { 'Error': 'Missing required fields' });
+  }
+
+}
 
 // ping handler
 handlers.ping = (data, callback) => {
