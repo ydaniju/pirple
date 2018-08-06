@@ -30,13 +30,13 @@ handlers._users.post = (data, callback) => {
   // Check that all required fields are filled out
   const firstName = typeof(data.payload.firstName) === 'string' &&
     data.payload.firstName.trim().length > 0 ? data.payload.firstName.trim() : false;
-  const lastName = typeof (data.payload.lastName) === 'string' &&
+  const lastName = typeof(data.payload.lastName) === 'string' &&
     data.payload.lastName.trim().length > 0 ? data.payload.lastName.trim() : false;
-  const phone = typeof (data.payload.phone) === 'string' &&
+  const phone = typeof(data.payload.phone) === 'string' &&
     data.payload.phone.trim().length == 10 ? data.payload.phone.trim() : false;
-  const password = typeof (data.payload.password) === 'string' &&
+  const password = typeof(data.payload.password) === 'string' &&
     data.payload.password.trim().length > 0 ? data.payload.password.trim() : false;
-  const tosAgreement = typeof (data.payload.tosAgreement) === 'boolean' &&
+  const tosAgreement = typeof(data.payload.tosAgreement) === 'boolean' &&
     data.payload.tosAgreement ? true : false;
 
   if (firstName && lastName && phone && password && tosAgreement) {
@@ -108,11 +108,11 @@ handlers._users.put = (data, callback) => {
   // Check if phone number passed is valid
   const phone = typeof(data.payload.phone) === 'string' ?
     data.payload.phone.trim() : false;
-  const firstName = typeof (data.payload.firstName) === 'string' &&
+  const firstName = typeof(data.payload.firstName) === 'string' &&
     data.payload.firstName.trim().length > 0 ? data.payload.firstName.trim() : false;
-  const lastName = typeof (data.payload.lastName) === 'string' &&
+  const lastName = typeof(data.payload.lastName) === 'string' &&
     data.payload.lastName.trim().length > 0 ? data.payload.lastName.trim() : false;
-  const password = typeof (data.payload.password) === 'string' &&
+  const password = typeof(data.payload.password) === 'string' &&
     data.payload.password.trim().length > 0 ? data.payload.password.trim() : false;
 
   // Error if the phone is invalid
@@ -160,7 +160,7 @@ handlers._users.put = (data, callback) => {
 // @TODO delete any other data related to user
 handlers._users.delete = (data, callback) => {
   // Check if phone number passed is valid
-  const phone = typeof (data.queryStringObject.phone) === 'string' ?
+  const phone = typeof(data.queryStringObject.phone) === 'string' ?
     data.queryStringObject.phone.trim() : false;
   if(phone) {
     _data.delete('users', phone, (err) => {
@@ -191,9 +191,9 @@ handlers._tokens = {};
 // Tokens - post
 // Required data: phone and password
 handlers._tokens.post = (data, callback) => {
-  const phone = typeof (data.payload.phone) === 'string' &&
+  const phone = typeof(data.payload.phone) === 'string' &&
     data.payload.phone.trim().length == 10 ? data.payload.phone.trim() : false;
-  const password = typeof (data.payload.password) === 'string' &&
+  const password = typeof(data.payload.password) === 'string' &&
     data.payload.password.trim().length > 0 ? data.payload.password.trim() : false;
 
   if (phone && password) {
@@ -218,21 +218,41 @@ handlers._tokens.post = (data, callback) => {
               callback(200, tokenObject);
             } else {
               callback(500, { 'Error': 'Could not create the random string '});
-            }
-          })
+            };
+          });
         } else {
           callback(400, { 'Error': 'Password did not match the specified user stored password' });
-        }
-
+        };
       } else {
         callback(400, { 'Error': 'Could not find user specified' });
-      }
-    })
+      };
+    });
   } else {
     callback(400, { 'Error': 'Missing required fields' });
-  }
+  };
+};
 
-}
+// REquired data: id
+// Optional data: none
+handlers._tokens.get = (data, callback) => {
+  // Check if phone number passed is valid
+  console.log(data.queryStringObject.id)
+  const id = typeof(data.queryStringObject.id) === 'string' && 
+    data.queryStringObject.id.trim().length === 20 ? 
+    data.queryStringObject.id.trim() : false;
+  if (id) {
+    _data.read('tokens', id, (err, tokenData) => {
+      if (!err && tokenData) {
+        callback(200, tokenData);
+      } else {
+        callback(404);
+      }
+    });
+  } else {
+    callback(404, { 'Error': 'Missing field required' });
+  }
+};
+
 
 // ping handler
 handlers.ping = (data, callback) => {
