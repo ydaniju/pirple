@@ -104,7 +104,7 @@ handlers._users.get = (data, callback) => {
       }
     });
   } else {
-    callback(404, { 'Error': 'Missing field required' });
+    callback(404, { 'Error': 'Missing required field' });
   }
 };
 
