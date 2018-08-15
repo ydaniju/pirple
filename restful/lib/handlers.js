@@ -341,7 +341,7 @@ handlers._tokens.delete = (data, callback) => {
 };
 
 // Verify if a given token id is currently valid for a given user
-_handlers._tokens.verifyToken = (id, phone, callback) => {
+handlers._tokens.verifyToken = (id, phone, callback) => {
   // Lookup the token
   _data.read('tokens', id, (err, tokenData) => {
     if (!err && tokenData) {
