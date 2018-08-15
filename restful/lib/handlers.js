@@ -232,11 +232,11 @@ handlers._tokens.post = (data, callback) => {
   };
 };
 
-// REquired data: id
+// Tokens - get
+// Required data: id
 // Optional data: none
 handlers._tokens.get = (data, callback) => {
   // Check if phone number passed is valid
-  console.log(data.queryStringObject.id)
   const id = typeof(data.queryStringObject.id) === 'string' && 
     data.queryStringObject.id.trim().length === 20 ? 
     data.queryStringObject.id.trim() : false;
@@ -249,10 +249,46 @@ handlers._tokens.get = (data, callback) => {
       }
     });
   } else {
-    callback(404, { 'Error': 'Missing field required' });
+    callback(400, { 'Error': 'Missing required field' });
   }
 };
 
+// Tokens - put
+// Required data: id, extend
+// Optional data: none
+handlers._tokens.put = (data, callback) => {
+  const id = typeof (data.payload.id) === 'string' &&
+    data.payload.id.trim().length === 20 ? data.payload.id.trim() : false;
+  const extend = typeof (data.payload.extend) === 'boolean' && data.payload.extend
+  if (id && extend) {
+    // Lookup the token
+    _data.read('tokens', id, (err, tokenData) => {
+      if(!err && tokenData) {
+        // Check to see if the token has not expired
+        if(tokenData.expires > Date.now()) {
+          // Set the expiration to an hour from now
+          tokenData.expires = Date.now() + 1000 * 60 * 60;
+
+          // Store the new updates
+          _data.update('tokens', id, tokenData, (err) => {
+            if (!err) {
+              callback(200);
+            } else {
+              callback(500, { 'Error': 'Could not update the token\'s expiration' });
+            };
+          })
+        } else {
+          callback(400, { 'Error': 'Token has expired and cannot be extended' });
+        };
+      } else {
+        callback(400, { 'Error': 'Specified token does not exist' });
+      };
+    });
+  } else {
+    callback(400, { 'Error': 'Missing required field or fields are invalid' });
+  }
+
+}
 
 // ping handler
 handlers.ping = (data, callback) => {
