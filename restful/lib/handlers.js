@@ -287,8 +287,36 @@ handlers._tokens.put = (data, callback) => {
   } else {
     callback(400, { 'Error': 'Missing required field or fields are invalid' });
   }
+};
 
-}
+// Tokens - delete
+// Required data: id
+// Optional data: none
+
+handlers._tokens.delete = (data, callback) => {
+  // Check if id passed is valid
+  const id = typeof (data.queryStringObject.id) === 'string' ?
+    data.queryStringObject.id.trim() : false;
+  if (id) {
+    // Lookup the token
+    _data.read('tokens', id, (err, data) => {
+      if (!err && data) {
+        _data.delete('tokens', id, (err) => {
+          if (!err) {
+            callback(200);
+          } else {
+            callback(500, { 'Error': 'Could not delete the specified token' });
+          };
+        });
+      } else {
+        callback(404, { 'Error': 'Could not find the specified token' })
+      };
+    });
+  } else {
+    callback(400, { 'Error': 'Missing required field' });
+  };
+};
+
 
 // ping handler
 handlers.ping = (data, callback) => {
