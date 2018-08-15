@@ -80,19 +80,27 @@ handlers._users.post = (data, callback) => {
 // Users - get
 // Required data: phone
 // Optional data: none
-// @TODO let only authenticated user access their object and not anyone else's
 handlers._users.get = (data, callback) => {
   // Check if phone number passed is valid
   const phone = typeof(data.queryStringObject.phone) === 'string' ?
     data.queryStringObject.phone.trim() : false;
   if (phone) {
-    _data.read('users', phone, (err, data) => {
-      if (!err && data) {
-        // Remove the hashed password from user object before returning
-        delete data.hashedPassword;
-        callback(200, data);
+    // Get the token from the headers
+    const token = typeof(data.headers.token) === 'string' ? data.headers.token : false;
+    // Verify that the given token from headers is valid for the phone number
+    handlers._tokens.verifyToken(token, phone, (tokenIsValid) => {
+      if (tokenIsValid) {
+        _data.read('users', phone, (err, data) => {
+          if (!err && data) {
+            // Remove the hashed password from user object before returning
+            delete data.hashedPassword;
+            callback(200, data);
+          } else {
+            callback(404);
+          }
+        });
       } else {
-        callback(404);
+        callback(403, { 'Error': 'Missing required token in header, or token is invalid' });
       }
     });
   } else {
@@ -103,7 +111,6 @@ handlers._users.get = (data, callback) => {
 // Users - put
 // Required data: phone
 // Optional data: firstName, lastName, password (at least one must be specified)
-// @TODO let only authenticated user update their object and not anyone else's
 handlers._users.put = (data, callback) => {
   // Check if phone number passed is valid
   const phone = typeof(data.payload.phone) === 'string' ?
@@ -119,32 +126,41 @@ handlers._users.put = (data, callback) => {
   if(phone) {
     // Error if nothing is sent for update
     if(firstName || lastName || password) {
-      // Lookup the user
-      _data.read('users', phone, (err, userData) => {
-        if (!err && userData) {
-          // updates the necessary field
-          if (firstName) {
-            userData.firstName = firstName;
-          };
-          if(lastName) {
-            userData.lastName = lastName;
-          };
-          if(password) {
-            userData.hashedPassword = helpers.hash(password);
-          };
-          // Store the new updates
-          _data.update('users', phone, userData, (err) => {
-            if (!err) {
-              callback(200);
+      // Get the token from the headers
+      const token = typeof (data.headers.token) === 'string' ? data.headers.token : false;
+      // Verify that the given token from headers is valid for the phone number
+      handlers._tokens.verifyToken(token, phone, (tokenIsValid) => {
+        if (tokenIsValid) {
+          // Lookup the user
+          _data.read('users', phone, (err, userData) => {
+            if (!err && userData) {
+              // updates the necessary field
+              if (firstName) {
+                userData.firstName = firstName;
+              };
+              if(lastName) {
+                userData.lastName = lastName;
+              };
+              if(password) {
+                userData.hashedPassword = helpers.hash(password);
+              };
+              // Store the new updates
+              _data.update('users', phone, userData, (err) => {
+                if (!err) {
+                  callback(200);
+                } else {
+                  console.log(err);
+                  callback(500, { 'Error': 'Could not update the user' });
+                }
+              });
             } else {
-              console.log(err);
-              callback(500, { 'Error': 'Could not update the user' });
+              callback(400, { 'Error': 'The specified user does not exist' });
             }
           });
         } else {
-          callback(400, { 'Error': 'The specified user does not exist' });
-        }
-      })
+          callback(403, { 'Error': 'Missing required token in header, or token is invalid' });
+        };
+      });
     } else {
       callback(400, { 'Error': 'Missing fields to update' });
     };
@@ -156,19 +172,26 @@ handlers._users.put = (data, callback) => {
 // Users - delete
 // Required data: phone
 // Optional data: none
-// @TODO let authenticated user delete their data and no one else
 // @TODO delete any other data related to user
 handlers._users.delete = (data, callback) => {
   // Check if phone number passed is valid
   const phone = typeof(data.queryStringObject.phone) === 'string' ?
     data.queryStringObject.phone.trim() : false;
   if(phone) {
-    _data.delete('users', phone, (err) => {
-      if(!err) {
-        callback(200);
+    const token = typeof (data.headers.token) === 'string' ? data.headers.token : false;
+    // Verify that the given token from headers is valid for the phone number
+    handlers._tokens.verifyToken(token, phone, (tokenIsValid) => {
+      if (tokenIsValid) {
+        _data.delete('users', phone, (err) => {
+          if(!err) {
+            callback(200);
+          } else {
+            callback(500, { 'Error': 'Could not delete the specified user' });
+          };
+        });
       } else {
-        callback(500, { 'Error': 'Could not delete the specified user' });
-      };
+        callback(403, { 'Error': 'Missing required token in header, or token is invalid' });
+      }
     });
   } else {
     callback(400, { 'Error': 'Missing required field' });
@@ -317,6 +340,22 @@ handlers._tokens.delete = (data, callback) => {
   };
 };
 
+// Verify if a given token id is currently valid for a given user
+_handlers._tokens.verifyToken = (id, phone, callback) => {
+  // Lookup the token
+  _data.read('tokens', id, (err, tokenData) => {
+    if (!err && tokenData) {
+      // Check that the token is for the given user and has not expired
+      if (tokenData.phone === phone && tokenData.expires > Date.now()) {
+        callback(true);
+      } else {
+        callback(false);
+      }
+    } else {
+      callback(false);
+    };
+  });
+}
 
 // ping handler
 handlers.ping = (data, callback) => {
