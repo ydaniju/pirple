@@ -195,9 +195,9 @@ handlers._users.delete = (data, callback) => {
                   let checksDeleted = 0;
                   let checkDeletionErrors = false;
                   // Loop through the checks
-                  userChecks.map((check) => {
+                  userChecks.map((checkId) => {
                     // Delete the check
-                    _data.delete('checks', check.id, (err) => {
+                    _data.delete('checks', checkId, (err) => {
                       if (err) {
                         checkDeletionErrors = true;
                       };
