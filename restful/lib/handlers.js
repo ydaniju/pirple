@@ -6,6 +6,7 @@
 // Dependencies
 const _data = require('./data');
 const helpers = require('./helpers');
+const config = require('./config');
 
 // Define the handlers
 const handlers = {};
@@ -127,7 +128,7 @@ handlers._users.put = (data, callback) => {
     // Error if nothing is sent for update
     if(firstName || lastName || password) {
       // Get the token from the headers
-      const token = typeof (data.headers.token) === 'string' ? data.headers.token : false;
+      const token = typeof(data.headers.token) === 'string' ? data.headers.token : false;
       // Verify that the given token from headers is valid for the phone number
       handlers._tokens.verifyToken(token, phone, (tokenIsValid) => {
         if (tokenIsValid) {
@@ -178,7 +179,7 @@ handlers._users.delete = (data, callback) => {
   const phone = typeof(data.queryStringObject.phone) === 'string' ?
     data.queryStringObject.phone.trim() : false;
   if(phone) {
-    const token = typeof (data.headers.token) === 'string' ? data.headers.token : false;
+    const token = typeof(data.headers.token) === 'string' ? data.headers.token : false;
     // Verify that the given token from headers is valid for the phone number
     handlers._tokens.verifyToken(token, phone, (tokenIsValid) => {
       if (tokenIsValid) {
@@ -206,7 +207,7 @@ handlers.tokens = (data, callback) => {
   } else {
     callback(405);
   };
-}
+};
 
 // Container for all the token methods
 handlers._tokens = {};
@@ -280,9 +281,9 @@ handlers._tokens.get = (data, callback) => {
 // Required data: id, extend
 // Optional data: none
 handlers._tokens.put = (data, callback) => {
-  const id = typeof (data.payload.id) === 'string' &&
+  const id = typeof(data.payload.id) === 'string' &&
     data.payload.id.trim().length === 20 ? data.payload.id.trim() : false;
-  const extend = typeof (data.payload.extend) === 'boolean' && data.payload.extend
+  const extend = typeof(data.payload.extend) === 'boolean' && data.payload.extend
   if (id && extend) {
     // Lookup the token
     _data.read('tokens', id, (err, tokenData) => {
@@ -318,7 +319,7 @@ handlers._tokens.put = (data, callback) => {
 
 handlers._tokens.delete = (data, callback) => {
   // Check if id passed is valid
-  const id = typeof (data.queryStringObject.id) === 'string' ?
+  const id = typeof(data.queryStringObject.id) === 'string' ?
     data.queryStringObject.id.trim() : false;
   if (id) {
     // Lookup the token
@@ -355,7 +356,104 @@ handlers._tokens.verifyToken = (id, phone, callback) => {
       callback(false);
     };
   });
-}
+};
+
+// Checks
+handlers.checks = (data, callback) => {
+  const acceptableMethods = ['post', 'get', 'put', 'delete'];
+  if (acceptableMethods.indexOf(data.method) > -1) {
+    handlers._checks[data.method](data, callback);
+  } else {
+    callback(405);
+  };
+};
+
+// Container for all the checks methods
+handlers._checks = {};
+
+// Checks - post
+// Required data: protocol, url, method, successCodes, timeoutSeconds
+// Optional data: none
+handlers._checks.post = (data, callback) => {
+  // Validate inputs
+  const protocol = typeof(data.payload.protocol) === 'string' && ['http', 'https']
+    .indexOf(data.payload.protocol) > -1 ? data.payload.protocol.trim() : false;
+  const url = typeof(data.payload.url) === 'string' &&
+    data.payload.url.trim().length > 0 ? data.payload.url.trim() : false;
+  const method = typeof (data.payload.method) === 'string' && ['post', 'get', 'put', 'delete']
+    .indexOf(data.payload.method) > -1 ? data.payload.method.trim() : false;
+  const successCodes = typeof(data.payload.successCodes) === 'object' &&
+    data.payload.successCodes instanceof Array && data.payload.successCodes.length > 0
+    ? data.payload.successCodes : false;
+  const timeoutSeconds = typeof (data.payload.timeoutSeconds) === 'number' &&
+    data.payload.timeoutSeconds % 1 === 0 && data.payload.timeoutSeconds >= 1 &&
+    data.payload.timeoutSeconds <= 5 ? data.payload.timeoutSeconds : false;
+  
+  if (protocol && url && method && successCodes && timeoutSeconds) {
+    // Get the token from the headers
+    const token = typeof(data.headers.token) === 'string' ? data.headers.token : false;
+
+    // Lookup the user by reading the token
+    _data.read('tokens', token, (err, tokenData) => {
+      if (!err && tokenData) {
+        const userPhone = tokenData.phone;
+
+        // Lookup the user data
+        _data.read('user', userPhone, (err, userData) => {
+          if (!err && userData) {
+            const userChecks = typeof(userData.checks) === 'object' && 
+              userData.checks instanceof Array ? userData.checks : []
+            // Verify user has less than max checks for user
+            if (userChecks.length < config.maxChecks) {
+              // Create random id for the check
+              const checkId = helpers.createRandomString(20);
+
+              // Create the check object, and include user's phone
+              const checkObject = {
+                id: checkId,
+                userPhone,
+                protocol,
+                url,
+                method,
+                successCodes,
+                timeoutSeconds,
+              };
+              _data.create('checks', checkId, checkObject, (err) => {
+                if (!err) {
+                  // Add the check id to the user object
+                  userData.checks = userChecks;
+                  userData.check.push(checkId);
+
+                  // Save the new user data
+                  _data.update('users', userPhone, userData, (err) => {
+                    if (!err) {
+                      // Return the data about the new check to the requester
+                      callback(200, checkObject);
+                    } else {
+                      callback(500, { 'Error': 'Could not update user with new checks' });
+                    }
+                  });
+                } else {
+                  callback(500, { 'Error': 'Could not create the new check' });
+                };
+              });
+            } else {
+              callback(400, { 
+                'Error': `The user already has the maximum number of checks (${config.maxChecks})`
+              });
+            }
+          } else {
+            callback(403);
+          }
+        });
+      } else {
+        callback(403);
+      }
+    });
+  } else {
+    callback(400, { 'Error': 'Missing required inputs, or inputs are invalid' });
+  };
+};
 
 // ping handler
 handlers.ping = (data, callback) => {
