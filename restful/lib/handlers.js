@@ -173,7 +173,6 @@ handlers._users.put = (data, callback) => {
 // Users - delete
 // Required data: phone
 // Optional data: none
-// @TODO delete any other data related to user
 handlers._users.delete = (data, callback) => {
   // Check if phone number passed is valid
   const phone = typeof(data.queryStringObject.phone) === 'string' ?
@@ -183,11 +182,45 @@ handlers._users.delete = (data, callback) => {
     // Verify that the given token from headers is valid for the phone number
     handlers._tokens.verifyToken(token, phone, (tokenIsValid) => {
       if (tokenIsValid) {
-        _data.delete('users', phone, (err) => {
-          if(!err) {
-            callback(200);
+        // Lookup the user
+        _data.read('users', phone, (err, userData) => {
+          if (!err && userData) {
+            _data.delete('users', phone, (err) => {
+              if (!err) {
+                // Delete checks associated with user
+                const userChecks = typeof (userData.checks) === 'object' &&
+                  userData.checks instanceof Array ? userData.checks : [];
+                const checksToDelete = userChecks.length;
+                if (checksToDelete) {
+                  let checksDeleted = 0;
+                  let checkDeletionErrors = false;
+                  // Loop through the checks
+                  userChecks.map((check) => {
+                    // Delete the check
+                    _data.delete('checks', check.id, (err) => {
+                      if (err) {
+                        checkDeletionErrors = true;
+                      };
+                      checksDeleted++;
+                      if (checksDeleted === checksToDelete) {
+                        if (!checkDeletionErrors) {
+                          callback(200);
+                        } else {
+                          callback(500, { 'Error': 'Errors encountered while deleting checks, all checks may not have been deleted' });
+                        };
+                      };
+                    });
+                  });
+
+                } else {
+                  callback(200);
+                }
+              } else {
+                callback(500, { 'Error': 'Could not delete the specified user' });
+              };
+            });
           } else {
-            callback(500, { 'Error': 'Could not delete the specified user' });
+            callback(400, { 'Error': 'user not found' });
           };
         });
       } else {
