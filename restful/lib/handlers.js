@@ -545,12 +545,74 @@ handlers._checks.put = (data, callback) => {
       });
     } else {
       callback(400, { 'Error': 'Missing fields to update' });
-    }
+    };
 
   } else {
     callback(400, { 'Error': 'Missing required field' });
   };
-}
+};
+
+// Checks - delete
+// Required data: id
+// Optional data: none
+
+handlers._checks.delete = (data, callback) => {
+  // Check if id passed is valid
+  const id = typeof(data.queryStringObject.id) === 'string' &&
+    data.queryStringObject.id.trim().length === 20 ?
+    data.queryStringObject.id.trim() : false;
+  if (id) {
+    // Lookup the check
+    _data.read('checks', id, (err, checkData) => {
+      if (!err && checkData) {
+        const token = typeof(data.headers.token) === 'string' ? data.headers.token : false;
+        // Verify that the given token from headers is valid and belongs to user who created the check
+        handlers._tokens.verifyToken(token, checkData.userPhone, (tokenIsValid) => {
+          if (tokenIsValid) {
+            // Delete the check data
+            _data.delete('checks', id, (err) => {
+              if (!err) {
+                _data.read('users', checkData.userPhone, (err, userData) => {
+                  if (!err && userData) {
+                    const userChecks = typeof (userData.checks) === 'object' &&
+                      userData.checks instanceof Array ? userData.checks : [];
+                    
+                    // Remove the deleted check from the list of checks
+                    const checkPosition = userChecks.indexOf(id);
+                    if (checkPosition > -1) {
+                      userChecks.splice(checkPosition, 1);
+                      // Re-save the user's data
+                      _data.update('users', checkData.userPhone, userData, (err) => {
+                        if (!err) {
+                          callback(200);
+                        } else {
+                          callback(500, { 'Error': 'Could not update the user' });
+                        };
+                      });
+                    } else {
+                      callback(500, { "Error": "Could not find check on the user object, so could not remove it" });
+                    };
+                  } else {
+                    callback(500, { 'Error': 'Could not find user who created check data, hence can\'t delete' });
+                  };
+                });
+              } else {
+                callback(500, { 'Error': 'Could not delete the check data' });
+              };
+            });
+          } else {
+            callback(403);
+          };
+        });
+      } else {
+        callback(400, { 'Error': 'Specified ' })
+      };
+    });
+  } else {
+    callback(400, { 'Error': 'Missing required field' });
+  };
+};
+
 
 // ping handler
 handlers.ping = (data, callback) => {
