@@ -380,12 +380,12 @@ handlers._checks.post = (data, callback) => {
     .indexOf(data.payload.protocol) > -1 ? data.payload.protocol.trim() : false;
   const url = typeof(data.payload.url) === 'string' &&
     data.payload.url.trim().length > 0 ? data.payload.url.trim() : false;
-  const method = typeof (data.payload.method) === 'string' && ['post', 'get', 'put', 'delete']
+  const method = typeof(data.payload.method) === 'string' && ['post', 'get', 'put', 'delete']
     .indexOf(data.payload.method) > -1 ? data.payload.method.trim() : false;
   const successCodes = typeof(data.payload.successCodes) === 'object' &&
     data.payload.successCodes instanceof Array && data.payload.successCodes.length > 0
     ? data.payload.successCodes : false;
-  const timeoutSeconds = typeof (data.payload.timeoutSeconds) === 'number' &&
+  const timeoutSeconds = typeof(data.payload.timeoutSeconds) === 'number' &&
     data.payload.timeoutSeconds % 1 === 0 && data.payload.timeoutSeconds >= 1 &&
     data.payload.timeoutSeconds <= 5 ? data.payload.timeoutSeconds : false;
   
@@ -454,6 +454,40 @@ handlers._checks.post = (data, callback) => {
     callback(400, { 'Error': 'Missing required inputs, or inputs are invalid' });
   };
 };
+
+// Checks - get
+// Required data: id
+// Optional data: none
+handlers._checks.get = (data, callback) => {
+  // Check if id is valid
+  const id = typeof (data.queryStringObject.id) === 'string' && 
+    data.queryStringObject.id.trim().length === 20 ?
+    data.queryStringObject.id.trim() : false;
+
+  if (id) {
+    // Lookup the check
+    _data.read('checks', id, (err, checkData) => {
+      if (!err && checkData) {
+        // Get the token from the headers
+        const token = typeof (data.headers.token) === 'string' ? data.headers.token : false;
+        // Verify that the given token from headers is valid and belongs to user who created the check
+        handlers._tokens.verifyToken(token, checkData.userPhone, (tokenIsValid) => {
+          if (tokenIsValid) {
+            // Return check data
+            callback(200, checkData);
+          } else {
+            callback(403);
+          }
+        });
+      } else {
+        callback(404);
+      };
+    });
+  } else {
+    callback(400, { 'Error': 'Missing required field' });
+  }
+};
+
 
 // ping handler
 handlers.ping = (data, callback) => {
