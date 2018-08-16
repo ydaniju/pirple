@@ -399,7 +399,7 @@ handlers._checks.post = (data, callback) => {
         const userPhone = tokenData.phone;
 
         // Lookup the user data
-        _data.read('user', userPhone, (err, userData) => {
+        _data.read('users', userPhone, (err, userData) => {
           if (!err && userData) {
             const userChecks = typeof(userData.checks) === 'object' && 
               userData.checks instanceof Array ? userData.checks : []
@@ -422,7 +422,7 @@ handlers._checks.post = (data, callback) => {
                 if (!err) {
                   // Add the check id to the user object
                   userData.checks = userChecks;
-                  userData.check.push(checkId);
+                  userData.checks.push(checkId);
 
                   // Save the new user data
                   _data.update('users', userPhone, userData, (err) => {
