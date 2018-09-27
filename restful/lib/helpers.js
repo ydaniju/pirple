@@ -2,10 +2,11 @@
  * Helpers for various tasks
  * 
  */
-
-// Container for helpers
 const crypto = require('crypto');
 const config = require('./config');
+const https = require('https');
+const querystring = require('querystring');
+// Container for helpers
 const helpers = {};
 
 helpers.hash = (str) => {
@@ -39,7 +40,61 @@ helpers.createRandomString = (strLength) => {
   } else {
     return false;
   }
-}
+};
+
+// Send an SMS message via Twilio
+helpers.sendTwilioSms = (phone, msg, callback) => {
+  // Validate parameters
+  const phoneNumber = typeof(phone) == 'string' && phone.trim().length ?
+    phone.trim() : false;
+  const message = typeof(msg) == 'string' && msg.trim().length &&
+    msg.trim().length <= 11 ? msg.trim() : false;
+
+  if (phoneNumber && message) {
+    // Configure the request payload
+    const payload = {
+      From: config.twilio.fromPhone,
+      To: '+234' + phoneNumber,
+      Body: message,
+    };
+
+    // Stringify the payload
+    const stringPayload = querystring.stringify(payload);
+
+    // Configure the request details
+    const requestDetails = {
+      protocol: 'https:',
+      hostname: 'api.twilio.com',
+      method: 'POST',
+      path: '/2010-04-01/Accounts/' + config.twilio.accountSid + '/Messages.json',
+      auth: config.twilio.accountSid + ':' + config.twilio.authToken,
+      headers: {
+        'Content-Type' : 'application/x-www-form-urlencoded',
+        'Content-Length' : Buffer.byteLength(stringPayload),
+      },
+    };
+
+    // instantiate the request object
+    const req = https.request(requestDetails, (res) => {
+      // Grab the status of the response
+      const status = res.statusCode;
+      // Callback successful if the request went through
+      if (status === 200 || status === 201) {
+        callback(false);
+      } else {
+        callback('Status code returened was ' + status);
+      };
+    });
+
+    req.on('error', e => callback(e));
+
+    req.write(stringPayload);
+
+    req.end();
+  } else {
+    callback('Giving parameters were missing or invalid')
+  };
+};
 
 // Export heplers
 module.exports = helpers;
