@@ -5,7 +5,7 @@
 // Dependencies
 
 const server = require('./lib/server');
-// const workers = require('./lib/worker');
+const workers = require('./lib/workers');
 
 // Declare the app
 const app = {};
@@ -16,7 +16,7 @@ app.init = () => {
   server.init();
 
   // Start the worker
-  // workers.init();
+  workers.init();
 };
 
 // Execute 
