@@ -94,5 +94,17 @@ lib.delete = (dir, file, callback) => {
   });
 };
 
+// list all the files in a diretory
+lib.list = (dir, callback) => {
+  // unlink the file
+  fs.readdir(`${lib.baseDir}${dir}/`, (err, data) => {
+    if (!err && data && data.length) {
+      const trimmedFileNames = data.map((fileName) => fileName.replace('.json', ''));
+      callback(false)
+    } else {
+      callback(err, data);
+    }
+  });
+}
 // Export the module
 module.exports = lib;
