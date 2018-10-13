@@ -100,7 +100,7 @@ lib.list = (dir, callback) => {
   fs.readdir(`${lib.baseDir}${dir}/`, (err, data) => {
     if (!err && data && data.length) {
       const trimmedFileNames = data.map((fileName) => fileName.replace('.json', ''));
-      callback(false)
+      callback(false, trimmedFileNames);
     } else {
       callback(err, data);
     }
