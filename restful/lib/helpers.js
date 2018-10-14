@@ -48,13 +48,15 @@ helpers.sendTwilioSms = (phone, msg, callback) => {
   const phoneNumber = typeof(phone) == 'string' && phone.trim().length ?
     phone.trim() : false;
   const message = typeof(msg) == 'string' && msg.trim().length &&
-    msg.trim().length <= 11 ? msg.trim() : false;
+    msg.trim().length >= 1 ? msg.trim() : false;
 
   if (phoneNumber && message) {
+    const originalPhone = phoneNumber.startsWith('+234') ? phoneNumber :
+      '+234' + phoneNumber;
     // Configure the request payload
     const payload = {
       From: config.twilio.fromPhone,
-      To: '+234' + phoneNumber,
+      To: originalPhone,
       Body: message,
     };
 
