@@ -86,7 +86,6 @@ workers.performCheck = (originalCheckData) => {
 
   // parse the hostname and the path of the original check data
   const parsedUrl = url.parse(`${originalCheckData.protocol}://${originalCheckData.url}`);
-  console.log(parsedUrl.href)
   const hostName = parsedUrl.hostname;
   const path = parsedUrl.path; // Using the path and not pathname because we want query string
 
